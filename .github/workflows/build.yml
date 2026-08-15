@@ -1,0 +1,54 @@
+name: Build WallpaperBridge Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.5
+          fi
+          chmod +x gradlew
+
+      - name: Build AAR
+        run: ./gradlew :plugin:assembleRelease
+
+      - name: Generate .gdap file
+        run: |
+          mkdir -p output
+          cp plugin/build/outputs/aar/plugin-release.aar output/WallpaperBridge.aar
+          cat > output/WallpaperBridge.gdap << 'EOF'
+          [config]
+          name="WallpaperBridge"
+          binary_type="local"
+          binary="WallpaperBridge.aar"
+
+          [dependencies]
+          remote=[]
+          local=[]
+
+          [plugin]
+          launcher_component_names=[]
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WallpaperBridge-plugin
+          path: output/
